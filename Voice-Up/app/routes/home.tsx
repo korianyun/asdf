@@ -21,12 +21,14 @@ export default function Home() {
         <div className = "secondtext">Finish where you left off: </div>
         <div className="circle">
           <div className="timer">timer</div>
+          <div>.</div>
+          <div>.</div>
           <div className="topic">[Topic]</div>
         </div>
       </div>
       <div className="bottom">
         <div className="stats">stats</div>
-        <div className="random">random questions</div>
+        <div className="random">random</div>
         <div className="new">new</div>
         <div className="notes">notes</div>
         <div className="profile">profile</div>
