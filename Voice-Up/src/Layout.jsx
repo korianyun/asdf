@@ -30,7 +30,7 @@ export default function Layout() {
         {ROUTES.map((r) => <Route key={r.path} path={r.path} element={r.element} />)}
       </Routes>
       {/* Footer */}
-      <div className="p-5 h-32 bg-base-300 flex justify-around items-center">
+      <div className="p-5 h-20 bg-base-300 flex justify-around items-center">
         <Link to="/stats">
           <button className="btn btn-ghost">Stats</button>
         </Link>
