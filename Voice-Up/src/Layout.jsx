@@ -6,6 +6,7 @@ import RandomPage from './pages/random'
 import StatsPage from './pages/stats'
 import NewPage from './pages/new'
 import NotesPage from './pages/notes'
+import AboutPage from './pages/about'
 
 
 const ROUTES = [
@@ -15,7 +16,8 @@ const ROUTES = [
   { path: "/home", element: <HomePage /> },
   { path: "/stats", element: <StatsPage /> },
   { path: "/new", element: <NewPage/> },
-  { path: "/notes", element: <NotesPage /> }
+  { path: "/notes", element: <NotesPage /> },
+  { path: "/about", element: <AboutPage /> }
 
 
 ]
@@ -24,7 +26,7 @@ export default function Layout() {
 
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col justify-between">
       {/* Main */}
       <Routes>
         {ROUTES.map((r) => <Route key={r.path} path={r.path} element={r.element} />)}

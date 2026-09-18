@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+
 export default function ProfilePage() {
 
 
@@ -10,9 +12,12 @@ export default function ProfilePage() {
                 <div>Account Made: __________</div>
                 <div>Email: _________</div>
                 <div>Password: **********</div>
-                <button className="h-10 w-20 bg-zinc-400 hover:bg-zinc-500 active:bg-zinc-600 transition-colors">
-                    <div className="text-white">About</div>
-                </button>
+                <Link to="/about">
+                    <button className="h-10 w-20 bg-zinc-400 hover:bg-zinc-500 active:bg-zinc-600 transition-colors">
+                        <div className="text-white">About</div>
+                    </button>
+                </Link>
+
             </div>
         </div>
     );

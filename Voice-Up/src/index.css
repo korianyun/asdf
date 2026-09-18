@@ -8,6 +8,12 @@
   box-sizing: border-box;
 }
 
+textarea:focus {
+  outline: none;
+  border: 1px solid transparent;
+  /* Or 'border: none;' depending on your layout */
+  box-shadow: none;
+}
 
 .top {
   height: 150px;
@@ -16,6 +22,7 @@
   justify-content: center;
   align-items: center;
 }
+
 .TopText {
   color: black;
 }
@@ -42,15 +49,19 @@
 .firsttext {
   color: black;
 }
+
 .secondtext {
   color: black;
 }
+
 .topic {
   color: black;
 }
+
 .timer {
   color: black;
 }
+
 .bottom {
   height: 150px;
   background-color: gray;
@@ -59,18 +70,23 @@
   justify-content: space-around;
   align-items: center;
 }
+
 .stats {
   color: black;
 }
+
 .random {
   color: black;
 }
+
 .new {
   color: black;
 }
+
 .notes {
   color: black;
 }
+
 .profile {
   color: black;
 }
