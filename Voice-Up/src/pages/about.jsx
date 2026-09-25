@@ -2,7 +2,7 @@ export default function AboutPage() {
 
 
     return (
-        <div className="flex-grow flex justify-center items-center flex-col">
+        <div className="flex-grow flex justify-center items-center flex-col bg-[#f9f5f1]">
             <div className="text-7xl font-serif h-60">VoiceUp - one word at a time.</div>
             <div className="w-275 border-b-black">
                 <div className="text-xl font-serif text-center">My earliest memory is me freezing on stage during a presentation in 3rd grade. I vividly remember me stammering and looking at people awkwardly, not able to get the words out of my mouth.
