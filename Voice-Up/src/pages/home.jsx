@@ -7,7 +7,7 @@ export default function HomePage() {
           <div className="flex justify-center items-center text-5xl">Greetings, user</div>
           <div className="flex justify-center items-center text-2xl">Finished where you left off: </div>
         </div>
-        <div className="h-90 w-90 border-[#b97f55] border-3 rounded-full flex justify-center items-center flex-col">
+        <div className="h-90 w-90 border-[#b97f55] border-3 rounded-full flex justify-center items-center flex-col bg-[#debba1]">
           <div className="flex justify-center items-center text-2xl mb-7">Topic: </div>
 
           <div className="flex justify-center items-center text-2xl mt-7">Time: </div>

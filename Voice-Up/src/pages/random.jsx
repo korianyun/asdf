@@ -134,11 +134,11 @@ export default function RandomPage() {
 
     return (
         <div className="flex-grow flex flex-col justify-center items-center bg-[#f9f5f1]">
-            <div className="h-130 w-100 flex flex-col justify-around items-center border-[#b97f55] border-6 bg-[#debba1] rounded-3xl">
+            <div className="h-130 w-110 flex flex-col justify-around items-center border-[#b97f55] border-6 bg-[#debba1] mt-20 rounded-3xl">
 
-                <div className="mb-10 text-white">Topic: </div>
-                <div className="mb-10 mt-10 text-white">Time: </div>
-                <div className="mb-10 mt-10 text-white">Modifier:</div>
+                <div className="mb-15 mt-15 text-white">Topic: </div>
+                <div className="mb-15 mt-15 text-white">Time: </div>
+                <div className="mb-15 mt-15 text-white">Modifier:</div>
             </div>
             <div className="h-40 w-90 flex flex-col justify-center items-center">
                     <button className="text-black hover:bg-[#d49263] transition-colors bg-[#b97f55] h-12 w-30 text-white rounded-2xl">Randomize</button>
