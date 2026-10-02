@@ -1,18 +1,31 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
+import { formatTime, readSession } from '../session'
+import { CircularTimer } from './practice'
+
 export default function HomePage() {
+  const [session] = useState(readSession)
+  const navigate = useNavigate()
+  const hasSession = session && session.topic
 
   return (
-    <div className="flex flex-grow justify-center items-center bg-[#f9f6f3] flex-col">
-      <div className="flex justify-center">
-        <div className="h-50 w-100 flex justify-around items-center flex-col mb-10">
-          <div className="flex justify-center items-center text-5xl">Greetings, user</div>
-          <div className="flex justify-center items-center text-2xl">Finished where you left off: </div>
-        </div>
-        <div className="h-90 w-90 border-[#b97f55] border-3 rounded-full flex justify-center items-center flex-col bg-[#debba1]">
-          <div className="flex justify-center items-center text-2xl mb-7">Topic: </div>
-
-          <div className="flex justify-center items-center text-2xl mt-7">Time: </div>
-        </div>
-      </div>
-    </div>
-  );
+    <main className="practice-page home-page">
+      <header className="home-intro">
+        <span className="eyebrow">VOICE UP / HOME</span>
+        <h1>Welcome back.</h1>
+        <p>{hasSession ? 'Your last practice is right where you left it.' : 'Your next thought deserves to be heard.'}</p>
+      </header>
+      {hasSession ? (
+        <section className="home-session" aria-label="Last practice session">
+          <div className="home-session-copy">
+            <span className="eyebrow">LAST SESSION</span>
+            <h2>{session.topic}</h2>
+            <p>{session.difficulty} practice <span aria-hidden="true">·</span> {formatTime(session.durationSeconds)} total</p>
+            <small>{session.status === 'complete' ? 'Your next round is ready.' : `${formatTime(session.remainingSeconds)} left to finish.`}</small>
+          </div>
+          <CircularTimer session={session} actionLabel={session.status === 'complete' ? 'Practice again' : 'Resume'} onAction={() => navigate('/new/resume')} />
+        </section>
+      ) : <button className="primary-button" onClick={() => navigate('/new/setup')}>Start a practice session <span>→</span></button>}
+    </main>
+  )
 }

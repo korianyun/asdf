@@ -1,33 +1,33 @@
-export default function StatsPage() {
+import { formatTime, readNotes, readSession } from '../session'
 
+export default function StatsPage() {
+    const session = readSession()
+    const notes = readNotes()
+    const elapsed = session ? Math.max(0, session.durationSeconds - session.remainingSeconds) : 0
+    const progress = session?.durationSeconds ? Math.round((elapsed / session.durationSeconds) * 100) : 0
 
     return (
-        <div className="flex-grow flex flex-row justify-around items-center bg-[#f9f5f1]">
-            <div className="flex flex-col justify-between h-190 items-center">
-                <div className="border-2  border-[#b97f55] h-110 w-96 ml-10 flex flex-col justify-center items-center text-center p-12 bg-[#debba1] rounded-2xl">
-                    chart with days logged on app
+        <main className="practice-page dashboard-page stats-page">
+            <header className="dashboard-heading">
+                <span className="eyebrow">VOICE UP / STATS</span>
+                <h1>Your practice, at a glance.</h1>
+                <p>A quiet record of the work you have put in.</p>
+            </header>
+            <section className="stats-overview" aria-label="Latest session">
+                <div className="stats-focus">
+                    <span className="eyebrow">LATEST SESSION</span>
+                    <h2>{session?.topic || 'Your first session is waiting.'}</h2>
+                    <p>{session ? `${session.difficulty} practice · ${session.status === 'complete' ? 'Completed' : 'In progress'}` : 'No practice session recorded yet.'}</p>
+                    <div className="progress-track" role="progressbar" aria-label="Latest session progress" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100"><span style={{ width: `${progress}%` }} /></div>
+                    <small>{progress}% of the session elapsed</small>
                 </div>
-                <div className="border-2 border-[#b97f55] h-75 w-96 ml-10 flex justify-center items-center text-center p-12 bg-[#debba1] rounded-2xl">
-                    chart with amount of problems done on the app every day
+                <div className="stats-metrics">
+                    <div className="stat-metric"><span>TIME SPOKEN</span><strong>{formatTime(elapsed)}</strong></div>
+                    <div className="stat-metric"><span>SESSION LENGTH</span><strong>{session ? formatTime(session.durationSeconds) : '--:--'}</strong></div>
+                    <div className="stat-metric"><span>SAVED NOTES</span><strong>{String(notes.length).padStart(2, '0')}</strong></div>
                 </div>
-            </div>
-            <div className="h-190 w-200 flex flex-col justify-between content-between">
-                <div className="h-50 w-200 flex flex-row justify-between">
-                    <div className="border-2 border-[#b97f55] h-50 w-75 flex justify-center items-center bg-[#debba1] rounded-2xl">total time spent on app</div>
-                    <div className="border-2 border-[#b97f55] h-50 w-115 flex justify-center items-center bg-[#debba1] rounded-2xl">ranking on app</div>
-                </div>
-                <div className="h-80 w-200 flex flex-row justify-between">
-                    <div className="border-2 border-[#b97f55] h-80 w-200 flex justify-center items-center bg-[#debba1] rounded-2xl">% of problems completed (and left)</div>
-                </div>
-                <div className="h-50 w-200 flex flex-row justify-between">
-                    <div className="border-2 border-[#b97f55] h-50 w-120 flex justify-center items-center bg-[#debba1] rounded-2xl">accuracy on problems</div>
-                    <div className="border-2 border-[#b97f55] h-50 w-70 flex justify-center items-center bg-[#debba1] rounded-2xl">favorite topics</div>
-                </div>
-            </div>
-            <div className="flex flex-col justify-between">
-                <div className="border-2 border-[#b97f55] h-190 w-80 flex justify-center items-center bg-[#debba1] rounded-2xl">topics to work on:</div>
-            </div>
-
-        </div>
-    );
+            </section>
+            <div className="stats-footnote"><span className="eyebrow">KEEP GOING</span><p>Your next session adds another small step to the story.</p></div>
+        </main>
+    )
 }

@@ -1,28 +1,61 @@
-import { Link } from "react-router";
-
+import { useState } from 'react'
+import { Link } from 'react-router'
 
 export default function ProfilePage() {
+    const [picture, setPicture] = useState(() => {
+        try {
+            return localStorage.getItem('voice-up-profile-picture') || ''
+        } catch {
+            return ''
+        }
+    })
+    const [pictureError, setPictureError] = useState('')
 
+    function changePicture(event) {
+        const file = event.target.files?.[0]
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setPictureError('Choose an image file to update your picture.')
+            return
+        }
+        if (file.size > 3 * 1024 * 1024) {
+            setPictureError('Choose an image under 3 MB.')
+            return
+        }
+
+        const reader = new FileReader()
+        reader.onload = () => {
+            try {
+                const image = String(reader.result)
+                localStorage.setItem('voice-up-profile-picture', image)
+                setPicture(image)
+                setPictureError('')
+            } catch {
+                setPictureError('This image could not be saved in this browser.')
+            }
+        }
+        reader.readAsDataURL(file)
+        event.target.value = ''
+    }
 
     return (
-        <div className="flex-grow flex-col flex justify-around items-center bg-[#f9f5f1]">
-            <div className="h-160 w-130 border-6 border-[#b97f55] bg-[#debba1] flex flex-col justify-center rounded-4xl items-center">
-                <div className="bg-[#f9f5f1] h-70 w-70 border-b-black border-2 flex justify-center rounded-full items-center">
-                    <div>profile</div>
+        <main className="practice-page profile-page">
+            <section className="profile-card">
+                <div className="profile-picture-wrap">
+                    <div className="profile-picture">
+                        {picture ? <img src={picture} alt="Your profile" /> : <span>PROFILE</span>}
+                    </div>
+                    <input id="profile-picture-input" className="profile-picture-input" type="file" accept="image/*" onChange={changePicture} />
+                    <label className="profile-picture-picker" htmlFor="profile-picture-input">Change photo</label>
                 </div>
-                <div className="h-50 w-100 flex justify-around items-center flex-col">
-                    <div>Account Made: __________</div>
-                    <div>Email: _________</div>
-                    <div>Password: **********</div>
+                <div className="profile-account-details">
+                    <div><span>Account made</span><strong>__________</strong></div>
+                    <div><span>Email</span><strong>_________</strong></div>
+                    <div><span>Password</span><strong>**********</strong></div>
                 </div>
-            </div>
-            <Link to="/about">
-                <button className=" rounded-2xl h-10 w-20  hover:bg-[#d49263] transition-colors bg-[#b97f55]">
-                    <div className="text-white">About</div>
-                </button>
-            </Link>
-
-
-        </div>
-    );
+                {pictureError && <p className="profile-picture-error" role="status">{pictureError}</p>}
+            </section>
+            <Link className="profile-about-link" to="/about">About Voice Up <span aria-hidden="true">→</span></Link>
+        </main>
+    )
 }

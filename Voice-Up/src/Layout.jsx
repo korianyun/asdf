@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { Link, Route, Routes } from 'react-router'
+import { NavLink, Route, Routes } from 'react-router'
 import HomePage from './pages/home'
 import ProfilePage from './pages/profile'
 import RandomPage from './pages/random'
@@ -12,14 +11,23 @@ import AboutPage from './pages/about'
 const ROUTES = [
   { path: "/", element: <HomePage /> },
   { path: "/profile", element: <ProfilePage /> },
-  { path: "/random", element: <RandomPage /> },
+  { path: "/random/*", element: <RandomPage /> },
   { path: "/home", element: <HomePage /> },
   { path: "/stats", element: <StatsPage /> },
-  { path: "/new", element: <NewPage/> },
+  { path: "/new/*", element: <NewPage/> },
   { path: "/notes", element: <NotesPage /> },
   { path: "/about", element: <AboutPage /> }
 
 
+]
+
+const NAV_ITEMS = [
+  { path: '/stats', label: 'Stats' },
+  { path: '/random', label: 'Random' },
+  { path: '/', label: 'Home', end: true },
+  { path: '/new', label: 'New' },
+  { path: '/notes', label: 'Notes' },
+  { path: '/profile', label: 'Profile' },
 ]
 
 export default function Layout() {
@@ -32,27 +40,16 @@ export default function Layout() {
         {ROUTES.map((r) => <Route key={r.path} path={r.path} element={r.element} />)}
       </Routes>
       {/* Footer */}
-      <div className="p-5 h-20 bg-base-300 flex justify-around items-center bg-[#f9f5f1]">
-        <Link to="/stats">
-          <button className="btn btn-ghost">Stats</button>
-        </Link>
-        <Link to="/random">
-          <button className="btn btn-ghost">Random</button>
-        </Link>
-        <Link to="/home">
-          <button className="btn btn-ghost">Home</button>
-        </Link>
-        <Link to="/new">
-          <button className="btn btn-ghost">New</button>
-        </Link>
-        <Link to="/notes">
-          <button className="btn btn-ghost">Notes</button>
-        </Link>
-        <Link to="/profile">
-          <button className="btn btn-ghost">Profile</button>
-        </Link>
-
-      </div>
+      <nav className="site-footer" aria-label="Main navigation">
+        <div className="nav-inner">
+          {NAV_ITEMS.map(({ path, label, end }) => (
+            <NavLink key={path} to={path} end={end} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span className="nav-indicator" aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }
