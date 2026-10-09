@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { deleteNote, readNotes, renameNote, saveNote } from '../session'
+import { isFamilyFriendlyText } from '../familyFriendlyText'
 
 export default function NotesPage() {
   const [notes, setNotes] = useState(readNotes)
@@ -7,6 +8,8 @@ export default function NotesPage() {
   const [titleDraft, setTitleDraft] = useState('')
   const [titleError, setTitleError] = useState('')
   const dialogRef = useRef(null)
+  const deleteDialogRef = useRef(null)
+  const [pendingDeleteTopic, setPendingDeleteTopic] = useState('')
   const activeNote = notes.find((note) => note.topic === activeTopic)
 
   function openNote(topic) {
@@ -34,19 +37,33 @@ export default function NotesPage() {
   }
 
   function removeNote(topic) {
-    if (!window.confirm(`Delete the note "${topic}"? This cannot be undone.`)) return
-    setNotes(deleteNote(topic))
-    if (activeTopic === topic) {
+    setPendingDeleteTopic(topic)
+    deleteDialogRef.current?.showModal()
+  }
+
+  function confirmDeleteNote() {
+    if (!pendingDeleteTopic) return
+    setNotes(deleteNote(pendingDeleteTopic))
+    if (activeTopic === pendingDeleteTopic) {
       dialogRef.current?.close()
       setActiveTopic('')
       setTitleDraft('')
     }
+    deleteDialogRef.current?.close()
+  }
+
+  function clearPendingDelete() {
+    setPendingDeleteTopic('')
   }
 
   function commitTitle() {
     const nextTopic = titleDraft.trim()
     if (!nextTopic) {
       setTitleError('A note needs a title.')
+      return false
+    }
+    if (!isFamilyFriendlyText(nextTopic)) {
+      setTitleError('Choose a family-friendly note title.')
       return false
     }
     if (nextTopic === activeTopic) return true
@@ -97,7 +114,19 @@ export default function NotesPage() {
         {activeNote && (
           <div className="notes-dialog-content">
             <label className="notes-title-label" htmlFor="note-title">NOTE TITLE</label>
-            <input id="note-title" className="notes-title-input" value={titleDraft} maxLength={100} onChange={(event) => setTitleDraft(event.target.value)} onBlur={commitTitle} />
+            <input
+              id="note-title"
+              className="notes-title-input"
+              value={titleDraft}
+              maxLength={100}
+              onChange={(event) => setTitleDraft(event.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return
+                event.preventDefault()
+                if (commitTitle()) dialogRef.current?.close()
+              }}
+            />
             {titleError && <p className="notes-title-error" role="status">{titleError}</p>}
             <textarea className="notes-body-input" aria-label="Note contents" placeholder="Start typing..." value={activeNote.content} onChange={(event) => updateContent(event.target.value)} />
             <button className="primary-button notes-done" onClick={() => {
@@ -105,6 +134,28 @@ export default function NotesPage() {
             }}>Done <span aria-hidden="true">→</span></button>
           </div>
         )}
+      </dialog>
+      <dialog
+        ref={deleteDialogRef}
+        className="notes-dialog notes-delete-dialog"
+        aria-labelledby="delete-note-title"
+        aria-describedby="delete-note-description"
+        onClose={clearPendingDelete}
+      >
+        <div className="notes-dialog-top">
+          <span className="eyebrow">VOICE UP / DELETE NOTE</span>
+          <button className="notes-dialog-close" aria-label="Cancel deletion" onClick={() => deleteDialogRef.current?.close()}>×</button>
+        </div>
+        <div className="notes-delete-content">
+          <h2 id="delete-note-title">Delete this note?</h2>
+          <p id="delete-note-description">
+            “{pendingDeleteTopic}” will be permanently deleted. This cannot be undone.
+          </p>
+          <div className="notes-delete-actions">
+            <button className="secondary-button" onClick={() => deleteDialogRef.current?.close()}>Cancel</button>
+            <button className="primary-button notes-delete-confirm" onClick={confirmDeleteNote}>Delete note</button>
+          </div>
+        </div>
       </dialog>
     </main>
   )

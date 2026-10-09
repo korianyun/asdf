@@ -1,15 +1,10 @@
 import nspell from 'nspell'
 import englishAffix from '../node_modules/dictionary-en/index.aff?raw'
 import englishDictionary from '../node_modules/dictionary-en/index.dic?raw'
+import { isFamilyFriendlyText } from './familyFriendlyText'
 
 const englishSpellcheck = nspell(englishAffix, englishDictionary)
 const recognizedAcronyms = new Set(['AI', 'ADHD', 'API', 'CRISPR', 'DNA', 'GPS', 'NASA', 'RNA', 'VR', 'WiFi'])
-const inappropriateTopicWords = new Set([
-  'ass', 'arse', 'bastard', 'bitch', 'blowjob', 'bullshit', 'cock', 'cocksucker',
-  'cunt', 'dick', 'dildo', 'douche', 'fag', 'faggot', 'fuck', 'motherfucker',
-  'nigga', 'nigger', 'piss', 'porn', 'pussy', 'shit', 'slut', 'spic', 'twat',
-  'whore', 'wanker',
-])
 
 export function validateTopic(value) {
   const topic = value.trim().replace(/\s+/g, ' ')
@@ -28,7 +23,7 @@ export function validateTopic(value) {
   if (characters.some((character, index) => index > 2 && character === characters[index - 1] && character === characters[index - 2] && character === characters[index - 3])) {
     return 'That does not look like a clear topic. Try a subject or specific question.'
   }
-  if (words.some((word) => inappropriateTopicWords.has(word.toLocaleLowerCase()))) {
+  if (!isFamilyFriendlyText(topic)) {
     return 'Choose a respectful topic without abusive or explicit language.'
   }
 
