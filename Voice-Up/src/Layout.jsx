@@ -1,7 +1,6 @@
-import { NavLink, Route, Routes } from 'react-router'
+import { Navigate, NavLink, Route, Routes } from 'react-router'
 import HomePage from './pages/home'
 import ProfilePage from './pages/profile'
-import RandomPage from './pages/random'
 import StatsPage from './pages/stats'
 import NewPage from './pages/new'
 import NotesPage from './pages/notes'
@@ -11,7 +10,8 @@ import AboutPage from './pages/about'
 const ROUTES = [
   { path: "/", element: <HomePage /> },
   { path: "/profile", element: <ProfilePage /> },
-  { path: "/random/*", element: <RandomPage /> },
+  { path: "/random", element: <Navigate to="/new/setup" replace /> },
+  { path: "/random/*", element: <Navigate to="/new/setup" replace /> },
   { path: "/home", element: <HomePage /> },
   { path: "/stats", element: <StatsPage /> },
   { path: "/new/*", element: <NewPage/> },
@@ -23,9 +23,8 @@ const ROUTES = [
 
 const NAV_ITEMS = [
   { path: '/stats', label: 'Stats' },
-  { path: '/random', label: 'Random' },
   { path: '/', label: 'Home', end: true },
-  { path: '/new', label: 'New' },
+  { path: '/new/setup', label: 'New' },
   { path: '/notes', label: 'Notes' },
   { path: '/profile', label: 'Profile' },
 ]

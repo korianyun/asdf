@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
-import { evaluateTranscript, formatTime, readNotes, readSession, readTopicCategories, saveNote, savePracticeRecord, saveSession } from '../session'
+import { evaluateTranscript, formatTime, readNotes, readSession, readTopicCategories, saveNote, savePracticeRecord, saveSession, summarizeSpeechPatterns } from '../session'
 import { categorizeTopic, getTopicCategory } from '../topicCategory'
 
 const difficulties = ['Easy', 'Medium', 'Hard', 'Expert']
@@ -61,6 +61,21 @@ const randomTopics = [...new Set([
 
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)]
+}
+
+function DiceButton({ field, onClick }) {
+  return (
+    <button className="setup-dice-button" type="button" aria-label={`Randomize ${field}`} title={`Randomize ${field}`} onClick={onClick}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="3" />
+        <circle cx="8.5" cy="8.5" r="1" />
+        <circle cx="15.5" cy="8.5" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="8.5" cy="15.5" r="1" />
+        <circle cx="15.5" cy="15.5" r="1" />
+      </svg>
+    </button>
+  )
 }
 
 function isLookingAtCamera(landmarks) {
@@ -152,7 +167,7 @@ function CameraPreview({ videoRef, eyeContactPercent, gazeModelReady, gazeError 
   )
 }
 
-function TopicNotesPanel({ topic, note, onChange, isOpen, onToggle, size, onSizeChange, dimensions, onDimensionsChange, resizeDragRef }) {
+function TopicNotesPanel({ topic, note, onChange, isOpen, onToggle, dimensions, onDimensionsChange, resizeDragRef }) {
   function startResize(event) {
     event.preventDefault()
     resizeDragRef.current = {
@@ -182,7 +197,7 @@ function TopicNotesPanel({ topic, note, onChange, isOpen, onToggle, size, onSize
 
   return (
     <section
-      className={`session-notes-widget session-notes-widget-${size} ${isOpen ? 'session-notes-widget-open' : 'session-notes-widget-closed'}`}
+      className={`session-notes-widget session-notes-widget-large ${isOpen ? 'session-notes-widget-open' : 'session-notes-widget-closed'}`}
       style={isOpen ? { '--notes-panel-width': `${dimensions.width}px`, '--notes-panel-height': `${dimensions.height}px` } : undefined}
       aria-label="Session notes"
     >
@@ -197,7 +212,7 @@ function TopicNotesPanel({ topic, note, onChange, isOpen, onToggle, size, onSize
         {isOpen ? 'Hide session notes' : 'Open session notes'}
       </button>
       {isOpen && (
-        <div id="session-notes-panel" className={`session-notes-panel session-notes-${size}`}>
+        <div id="session-notes-panel" className="session-notes-panel session-notes-large">
           <div className="session-notes-heading">
             <button
               className="session-notes-resize-handle"
@@ -213,14 +228,6 @@ function TopicNotesPanel({ topic, note, onChange, isOpen, onToggle, size, onSize
               <span>Resize panel</span>
             </button>
             <strong>SESSION NOTES</strong>
-            <label>
-              <span>Panel size</span>
-              <select value={size} onChange={(event) => onSizeChange(event.target.value)}>
-                <option value="compact">Compact</option>
-                <option value="standard">Standard</option>
-                <option value="large">Large</option>
-              </select>
-            </label>
           </div>
           <div className="topic-notes-content">
             <span className="topic-notes-label">TOPIC</span>
@@ -270,10 +277,10 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
   const [eyeContactPercent, setEyeContactPercent] = useState(null)
   const [gazeModelReady, setGazeModelReady] = useState(false)
   const [gazeError, setGazeError] = useState(false)
-  const [randomized, setRandomized] = useState(null)
   const [spinning, setSpinning] = useState(false)
+  const [rollingDice, setRollingDice] = useState('')
+  const [rollKey, setRollKey] = useState(0)
   const [sessionNotesOpen, setSessionNotesOpen] = useState(true)
-  const [sessionNotesSize, setSessionNotesSize] = useState('large')
   const [sessionNotesDimensions, setSessionNotesDimensions] = useState({ width: 480, height: 500 })
   const sessionNotesResizeRef = useRef(null)
 
@@ -376,6 +383,8 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
             eyeContactPercent: next.eyeContactPercent,
             onTopicPercent: next.evaluation.onTopicPercent,
             wordCount: next.evaluation.wordCount,
+            fillerWordCount: next.evaluation.fillerWordCount,
+            repeatedWordCount: next.evaluation.repeatedWordCount,
           })
           recognitionRef.current?.stop()
         }
@@ -401,6 +410,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         endsAt: undefined,
       }
       saveSession(pausedSession)
+      const speechPatterns = summarizeSpeechPatterns(session.transcript || transcript)
       savePracticeRecord({
         id: session.id,
         topic: session.topic,
@@ -412,7 +422,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         status: 'left',
         score: null,
         eyeContactPercent: session.eyeContactPercent ?? null,
-        wordCount: (session.transcript || transcript).trim().split(/\s+/).filter(Boolean).length,
+        ...speechPatterns,
       })
     }
     recognitionRef.current?.stop()
@@ -462,6 +472,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         transcript: nextSession.status === 'running' ? nextSession.transcript || '' : '',
       }
       saveSession(started)
+      const speechPatterns = summarizeSpeechPatterns(started.transcript || '')
       savePracticeRecord({
         id: started.id,
         topic: started.topic,
@@ -473,7 +484,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         status: 'in-progress',
         score: null,
         eyeContactPercent: started.eyeContactPercent ?? null,
-        wordCount: (started.transcript || '').trim().split(/\s+/).filter(Boolean).length,
+        ...speechPatterns,
       })
       setSession(started)
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -496,7 +507,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         recognitionRef.current = recognition
         recognition.start()
       }
-      navigate(mode === 'random' ? '/random/session' : '/new/session')
+      navigate('/new/session')
     } catch {
       stream?.getTracks().forEach((track) => track.stop())
       cameraStreamRef.current = null
@@ -545,7 +556,13 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     }
   }
 
-  function randomize() {
+  function rollDice(field) {
+    setRollingDice(field)
+    setRollKey((key) => key + 1)
+  }
+
+  function randomizeTopic() {
+    rollDice('topic')
     setSpinning(true)
     if (!randomTopicsRef.current.length) {
       const shuffledTopics = [...randomTopics]
@@ -565,14 +582,20 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     }
     const nextTopic = randomTopicsRef.current.pop()
     lastRandomTopicRef.current = nextTopic
-    setRandomized(nextTopic)
-    window.setTimeout(() => setSpinning(false), 700)
+    setTopic(nextTopic)
+    setPermissionError('')
   }
 
-  function startRandom() {
+  function randomizeTimer() {
+    rollDice('timer')
     const durationSeconds = Math.floor(Math.random() * (5 * 60 - 30 + 1)) + 30
-    configureSession(randomized, durationSeconds, randomItem(difficulties))
-    navigate('/random/preview')
+    setMinutes(Math.floor(durationSeconds / 60))
+    setSeconds(durationSeconds % 60)
+  }
+
+  function randomizeDifficulty() {
+    rollDice('difficulty')
+    setDifficulty(randomItem(difficulties))
   }
 
   function resume() {
@@ -625,35 +648,63 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     return <main className="practice-page setup-page">
       <ExitButton onClick={exit} />
       <div className="setup-heading"><span className="eyebrow">BUILD YOUR SESSION</span><h1>What would you like to explore?</h1><p>Set a topic, a time limit, and the level of challenge.</p></div>
-      <div className="setup-grid">
-        <section className="setup-field topic-field"><label htmlFor="practice-topic">Topic</label><input id="practice-topic" maxLength="100" placeholder="e.g. Why do cities need green spaces?" value={topic} onChange={(event) => setTopic(event.target.value)} /></section>
-        <section className="setup-field"><label>Timer</label><div className="time-inputs"><label><input aria-label="Minutes" type="number" min="0" max="30" value={minutes} onChange={(event) => setMinutes(Math.min(30, Math.max(0, Number(event.target.value))))} /><span>MIN</span></label><b>:</b><label><input aria-label="Seconds" type="number" min="0" max="59" step="15" value={seconds} onChange={(event) => setSeconds(Math.min(59, Math.max(0, Number(event.target.value))))} /><span>SEC</span></label></div><small>30 seconds to 30 minutes</small></section>
-        <section className="setup-field difficulty-field"><label>Difficulty</label><div className="difficulty-options">{difficulties.map((item) => <button key={item} className={difficulty === item ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => setDifficulty(item)}>{item}</button>)}</div><small>Higher levels expect more detail and stronger reasoning.</small></section>
+      <div className="setup-layout">
+        <div className="setup-grid">
+          <section className="setup-field topic-field">
+            <label htmlFor="practice-topic">Topic</label>
+            <div className="setup-field-control">
+              <input
+                key={spinning ? `topic-${rollKey}` : 'topic'}
+                id="practice-topic"
+                className={spinning ? 'topic-spinning' : ''}
+                maxLength="100"
+                placeholder="e.g. Why do cities need green spaces?"
+                value={topic}
+                onChange={(event) => setTopic(event.target.value)}
+                onAnimationEnd={() => {
+                  setSpinning(false)
+                  setRollingDice((current) => current === 'topic' ? '' : current)
+                }}
+              />
+              <DiceButton field="topic" onClick={randomizeTopic} />
+            </div>
+          </section>
+          <section className="setup-field">
+            <label>Timer</label>
+            <div className="setup-field-control">
+              <div
+                key={rollingDice === 'timer' ? `timer-${rollKey}` : 'timer'}
+                className={`time-inputs${rollingDice === 'timer' ? ' setup-value-roll' : ''}`}
+                onAnimationEnd={() => setRollingDice((current) => current === 'timer' ? '' : current)}
+              ><label><input aria-label="Minutes" type="number" min="0" max="30" value={minutes} onChange={(event) => setMinutes(Math.min(30, Math.max(0, Number(event.target.value))))} /><span>MIN</span></label><b>:</b><label><input aria-label="Seconds" type="number" min="0" max="59" step="15" value={seconds} onChange={(event) => setSeconds(Math.min(59, Math.max(0, Number(event.target.value))))} /><span>SEC</span></label></div>
+              <DiceButton field="timer" onClick={randomizeTimer} />
+            </div>
+            <small>30 seconds to 30 minutes</small>
+          </section>
+          <section className="setup-field difficulty-field">
+            <label>Difficulty</label>
+            <div className="setup-field-control">
+              <div className="difficulty-options">{difficulties.map((item) => <button key={item} className={difficulty === item ? 'difficulty-option selected' : 'difficulty-option'} onClick={() => setDifficulty(item)}>{difficulty === item && rollingDice === 'difficulty' ? <span key={`difficulty-${rollKey}`} className="setup-value-roll" onAnimationEnd={() => setRollingDice((current) => current === 'difficulty' ? '' : current)}>{item}</span> : item}</button>)}</div>
+              <DiceButton field="difficulty" onClick={randomizeDifficulty} />
+            </div>
+            <small>Higher levels expect more detail and stronger reasoning.</small>
+          </section>
+        </div>
       </div>
       {permissionError && <p className="inline-error">{permissionError}</p>}
       <button className="primary-button setup-submit" disabled={isValidatingTopic} onClick={startConfigured}>{isValidatingTopic ? 'Checking topic...' : 'Continue to timer'} <span>→</span></button>
     </main>
   }
 
-  if ((mode === 'new' || mode === 'random') && view === 'preview') {
+  if (mode === 'new' && view === 'preview') {
     return <main className="practice-page prestart-page">
       <ExitButton onClick={exit} />
-      <header className="prestart-heading"><span className="eyebrow">{mode === 'random' ? 'YOUR RANDOM TOPIC' : 'READY WHEN YOU ARE'}</span><h1>Find your first words.</h1><p>Take a moment to gather your thoughts before the timer starts.</p></header>
+      <header className="prestart-heading"><span className="eyebrow">READY WHEN YOU ARE</span><h1>Find your first words.</h1><p>Take a moment to gather your thoughts before the timer starts.</p></header>
       <CircularTimer session={session} />
       <div className="prestart-actions"><button className="secondary-button notes-button" onClick={openNotes}>Notes <span aria-hidden="true">↗</span></button><button className="primary-button" onClick={() => void begin(session)}>Start <span aria-hidden="true">→</span></button></div>
       {permissionError && <p className="inline-error">{permissionError}</p>}
       <p className="resume-detail">Microphone and camera access are requested when you start.</p>
       <TopicNotesDialog dialogRef={noteDialogRef} topic={session.topic} note={session.note || ''} onChange={updateNote} />
-    </main>
-  }
-
-  if (mode === 'random' && view !== 'session') {
-    return <main className="practice-page random-page">
-      <ExitButton onClick={exit} />
-      <div className="random-heading"><span className="eyebrow">OFF THE CUFF</span><h1>Get a little<br />uncomfortable.</h1><p>A surprise topic, a fresh perspective, and a few minutes to make it yours.</p></div>
-      <div className="random-result" aria-live="polite"><span className="random-label">YOUR TOPIC</span><p key={randomized || 'empty'} className={spinning ? 'topic-spinning' : ''}>{randomized || 'Ready when you are.'}</p>{randomized && <div className="random-details"><span>00:30–05:00</span><span>DIFFICULTY ASSIGNED AT START</span></div>}</div>
-      <div className="random-actions"><button className="secondary-button" onClick={randomize}>↻ <span>Randomize</span></button>{randomized && <button className="primary-button" onClick={startRandom}>Start this topic <span>→</span></button>}</div>
-      {permissionError && <p className="inline-error">{permissionError}</p>}
     </main>
   }
 
@@ -688,7 +739,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     return <main className={`practice-page session-page ${finished ? 'evaluation-page' : 'session-speaking'}`}>
       <ExitButton onClick={requestExit} />
       {!finished ? <>
-        <div className="session-topline"><span className="eyebrow">{mode === 'random' ? 'SURPRISE SESSION' : 'SPEAK YOUR MIND'}</span><span>{session.difficulty} · {formatTime(session.durationSeconds)} total</span></div>
+        <div className="session-topline"><span className="eyebrow">SPEAK YOUR MIND</span><span>{session.difficulty} · {formatTime(session.durationSeconds)} total</span></div>
         <CircularTimer session={session} running />
         <div className="session-tools"><div><strong>{session.topic}</strong><small>{transcript ? `${transcript.split(/\s+/).filter(Boolean).length} words captured` : 'Your topic note'}</small></div></div>
         <div className="capture-status"><span className="capture-dot"><MicrophoneIcon /></span><span>Listening while you speak</span>{permissionError && <small>{permissionError}</small>}</div>
@@ -698,15 +749,6 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
           onChange={updateNote}
           isOpen={sessionNotesOpen}
           onToggle={() => setSessionNotesOpen((isOpen) => !isOpen)}
-          size={sessionNotesSize}
-          onSizeChange={(size) => {
-            setSessionNotesSize(size)
-            setSessionNotesDimensions({
-              compact: { width: 320, height: 340 },
-              standard: { width: 400, height: 420 },
-              large: { width: 480, height: 500 },
-            }[size])
-          }}
           dimensions={sessionNotesDimensions}
           onDimensionsChange={setSessionNotesDimensions}
           resizeDragRef={sessionNotesResizeRef}

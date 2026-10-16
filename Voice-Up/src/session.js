@@ -234,6 +234,18 @@ export function formatTime(seconds) {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
 }
 
+export function summarizeSpeechPatterns(transcript) {
+  const words = transcript.toLocaleLowerCase().match(/[\p{L}\p{N}']+/gu) || []
+  const fillerWords = new Set(['um', 'uh', 'uhm', 'er', 'erm', 'hmm'])
+  let fillerWordCount = 0
+  let repeatedWordCount = 0
+  words.forEach((word, index) => {
+    if (fillerWords.has(word)) fillerWordCount += 1
+    if (index > 0 && word === words[index - 1]) repeatedWordCount += 1
+  })
+  return { wordCount: words.length, fillerWordCount, repeatedWordCount }
+}
+
 const topicStopWords = new Set([
   'a', 'about', 'an', 'and', 'are', 'as', 'at', 'be', 'between', 'by', 'can', 'challenges',
   'connection', 'different', 'everyday', 'exploring', 'facts', 'for', 'from', 'future', 'how',
@@ -269,6 +281,7 @@ function getTopicRelevance(transcript, topic) {
 export function evaluateTranscript(transcript, difficulty, eyeContactPercent = null, topic = '') {
   const words = transcript.trim().split(/\s+/).filter(Boolean)
   const wordCount = words.length
+  const { fillerWordCount, repeatedWordCount } = summarizeSpeechPatterns(transcript)
   const uniqueWords = new Set(words.map((word) => word.toLowerCase())).size
   const difficultyPenalty = { Easy: 0, Medium: 8, Hard: 16, Expert: 24 }[difficulty] ?? 0
   const eyeContactAdjustment = eyeContactPercent === null ? 0 : Math.round((eyeContactPercent - 50) * 0.16)
@@ -287,5 +300,5 @@ export function evaluateTranscript(transcript, difficulty, eyeContactPercent = n
   const topicFeedback = onTopicPercent === null
     ? 'Topic relevance could not be estimated from this transcript.'
     : `Estimated on-topic relevance: ${onTopicPercent}%. Topic relevance contributes 30% of your score and is estimated from words shared with the topic; related wording may not be recognized.`
-  return { score, result, feedback: `${speakingFeedback} ${topicFeedback} ${eyeContactFeedback}`, wordCount, eyeContactPercent, onTopicPercent }
+  return { score, result, feedback: `${speakingFeedback} ${topicFeedback} ${eyeContactFeedback}`, wordCount, fillerWordCount, repeatedWordCount, eyeContactPercent, onTopicPercent }
 }
