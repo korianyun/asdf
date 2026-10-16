@@ -854,6 +854,32 @@ select:focus-visible {
   color: #a53d30;
 }
 
+.session-stop-button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px auto 10px;
+  border: 1px solid #8c5e3f;
+  border-radius: 4px;
+  background: #fffdfa;
+  color: #704c32;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.session-stop-button:hover {
+  background: #704c32;
+  color: #fffdfa;
+}
+
+.session-stop-button:active {
+  transform: scale(.98);
+}
+
 .capture-dot {
   display: grid;
   width: 18px;

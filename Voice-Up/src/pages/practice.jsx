@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import { evaluateTranscript, formatTime, readNotes, readSession, readTopicCategories, saveNote, savePracticeRecord, saveSession, summarizeSpeechPatterns } from '../session'
@@ -358,42 +358,85 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     cameraStreamRef.current = null
   }, [session.status])
 
+  const finishSession = useCallback((current, elapsedSeconds) => {
+    const gazeStats = gazeStatsRef.current
+    const eyeContactPercent = gazeStats.samples ? Math.round((gazeStats.direct / gazeStats.samples) * 100) : null
+    const evaluation = evaluateTranscript(current.transcript || transcript, current.difficulty, eyeContactPercent, current.topic)
+    const next = {
+      ...current,
+      status: 'complete',
+      remainingSeconds: 0,
+      accumulatedElapsedSeconds: elapsedSeconds,
+      endsAt: undefined,
+      gazeSamples: gazeStats.samples,
+      eyeContactSamples: gazeStats.direct,
+      eyeContactPercent,
+      evaluation,
+    }
+    savePracticeRecord({
+      id: current.id,
+      topic: current.topic,
+      category: current.category || categorizeTopic(current.topic),
+      difficulty: current.difficulty,
+      startedAt: current.startedAt,
+      durationSeconds: current.durationSeconds,
+      elapsedSeconds,
+      status: 'completed',
+      score: evaluation.score,
+      eyeContactPercent,
+      onTopicPercent: evaluation.onTopicPercent,
+      wordCount: evaluation.wordCount,
+      fillerWordCount: evaluation.fillerWordCount,
+      repeatedWordCount: evaluation.repeatedWordCount,
+    })
+    recognitionRef.current?.stop()
+    saveSession(next)
+    return next
+  }, [transcript])
+
   useEffect(() => {
     if (session.status !== 'running') return undefined
     const interval = window.setInterval(() => {
       setSession((current) => {
         const remainingSeconds = Math.max(0, Math.ceil((current.endsAt - Date.now()) / 1000))
-        const next = { ...current, remainingSeconds, status: remainingSeconds === 0 ? 'complete' : 'running' }
-        const gazeStats = gazeStatsRef.current
-        next.gazeSamples = gazeStats.samples
-        next.eyeContactSamples = gazeStats.direct
-        next.eyeContactPercent = gazeStats.samples ? Math.round((gazeStats.direct / gazeStats.samples) * 100) : null
-        if (remainingSeconds === 0) {
-          next.evaluation = evaluateTranscript(current.transcript || transcript, current.difficulty, next.eyeContactPercent, current.topic)
-          savePracticeRecord({
-            id: current.id,
-            topic: current.topic,
-            category: current.category || categorizeTopic(current.topic),
-            difficulty: current.difficulty,
-            startedAt: current.startedAt,
-            durationSeconds: current.durationSeconds,
-            elapsedSeconds: current.durationSeconds,
-            status: 'completed',
-            score: next.evaluation.score,
-            eyeContactPercent: next.eyeContactPercent,
-            onTopicPercent: next.evaluation.onTopicPercent,
-            wordCount: next.evaluation.wordCount,
-            fillerWordCount: next.evaluation.fillerWordCount,
-            repeatedWordCount: next.evaluation.repeatedWordCount,
-          })
-          recognitionRef.current?.stop()
-        }
+        const elapsedSeconds = Math.min(
+          current.durationSeconds,
+          (current.accumulatedElapsedSeconds || 0)
+            + (current.remainingAtStart || current.durationSeconds)
+            - remainingSeconds,
+        )
+        const next = remainingSeconds === 0
+          ? finishSession(current, current.durationSeconds)
+          : {
+            ...current,
+            remainingSeconds,
+            accumulatedElapsedSeconds: elapsedSeconds,
+            gazeSamples: gazeStatsRef.current.samples,
+            eyeContactSamples: gazeStatsRef.current.direct,
+            eyeContactPercent: gazeStatsRef.current.samples
+              ? Math.round((gazeStatsRef.current.direct / gazeStatsRef.current.samples) * 100)
+              : null,
+          }
         saveSession(next)
         return next
       })
     }, 250)
     return () => window.clearInterval(interval)
-  }, [session.status, transcript])
+  }, [finishSession, session.status, transcript])
+
+  function stopTimerAndViewResults() {
+    setSession((current) => {
+      if (current.status !== 'running') return current
+      const remainingSeconds = Math.max(0, Math.ceil((current.endsAt - Date.now()) / 1000))
+      const elapsedSeconds = Math.min(
+        current.durationSeconds,
+        (current.accumulatedElapsedSeconds || 0)
+          + (current.remainingAtStart || current.durationSeconds)
+          - remainingSeconds,
+      )
+      return finishSession(current, elapsedSeconds)
+    })
+  }
 
   function exit() {
     if (session.status === 'running') {
@@ -743,6 +786,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         <CircularTimer session={session} running />
         <div className="session-tools"><div><strong>{session.topic}</strong><small>{transcript ? `${transcript.split(/\s+/).filter(Boolean).length} words captured` : 'Your topic note'}</small></div></div>
         <div className="capture-status"><span className="capture-dot"><MicrophoneIcon /></span><span>Listening while you speak</span>{permissionError && <small>{permissionError}</small>}</div>
+        <button className="session-stop-button" type="button" onClick={stopTimerAndViewResults}>Stop timer and view results <span aria-hidden="true">→</span></button>
         <TopicNotesPanel
           topic={session.topic}
           note={session.note || ''}
