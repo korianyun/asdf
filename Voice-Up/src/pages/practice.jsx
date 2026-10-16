@@ -475,6 +475,48 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
     navigate('/new')
   }
 
+  function endEarly() {
+    if (session.status !== 'running') return
+    const remainingSeconds = Math.max(0, Math.ceil((session.endsAt - Date.now()) / 1000))
+    const elapsedSeconds = Math.min(
+      session.durationSeconds,
+      (session.accumulatedElapsedSeconds || 0) + (session.remainingAtStart || session.durationSeconds) - remainingSeconds,
+    )
+    const gazeStats = gazeStatsRef.current
+    const eyeContactPercent = gazeStats.samples ? Math.round((gazeStats.direct / gazeStats.samples) * 100) : null
+    const evaluation = evaluateTranscript(session.transcript || transcript, session.difficulty, eyeContactPercent, session.topic)
+    const completed = {
+      ...session,
+      status: 'complete',
+      remainingSeconds,
+      accumulatedElapsedSeconds: elapsedSeconds,
+      endsAt: undefined,
+      gazeSamples: gazeStats.samples,
+      eyeContactSamples: gazeStats.direct,
+      eyeContactPercent,
+      evaluation,
+    }
+    savePracticeRecord({
+      id: session.id,
+      topic: session.topic,
+      category: session.category || categorizeTopic(session.topic),
+      difficulty: session.difficulty,
+      startedAt: session.startedAt,
+      durationSeconds: session.durationSeconds,
+      elapsedSeconds,
+      status: 'completed',
+      score: evaluation.score,
+      eyeContactPercent,
+      onTopicPercent: evaluation.onTopicPercent,
+      wordCount: evaluation.wordCount,
+      fillerWordCount: evaluation.fillerWordCount,
+      repeatedWordCount: evaluation.repeatedWordCount,
+    })
+    recognitionRef.current?.stop()
+    saveSession(completed)
+    setSession(completed)
+  }
+
   function requestExit() {
     if (session.status === 'running') {
       leaveRunDialogRef.current?.showModal()
@@ -548,14 +590,25 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         }
         recognition.onerror = () => setPermissionError('Microphone access is needed to capture speech. Check your browser’s microphone permission.')
         recognitionRef.current = recognition
-        recognition.start()
+        try {
+          recognition.start()
+        } catch (error) {
+          console.error('Speech recognition failed to start:', error)
+        }
       }
       navigate('/new/session')
-    } catch {
+    } catch (error) {
+      console.error('Could not start session:', error)
       stream?.getTracks().forEach((track) => track.stop())
       cameraStreamRef.current = null
       setCameraStream(null)
-      setPermissionError('Microphone and camera access are needed before continuing. Allow both permissions in your browser, then try again.')
+      const reasons = {
+        NotAllowedError: 'Microphone and camera access are needed before continuing. Allow both permissions in your browser (and in your system privacy settings), then try again.',
+        NotFoundError: 'No camera or microphone was found. Connect one and try again.',
+        NotReadableError: 'Your camera or microphone is being used by another app or tab. Close it and try again.',
+        OverconstrainedError: 'Your camera could not be opened with the requested settings.',
+      }
+      setPermissionError(reasons[error?.name] || `Could not start the session${error?.message ? `: ${error.message}` : '.'}`)
     }
   }
 
@@ -785,6 +838,7 @@ export default function PracticePage({ mode = 'new', view = 'setup' }) {
         <div className="session-topline"><span className="eyebrow">SPEAK YOUR MIND</span><span>{session.difficulty} · {formatTime(session.durationSeconds)} total</span></div>
         <CircularTimer session={session} running />
         <div className="session-tools"><div><strong>{session.topic}</strong><small>{transcript ? `${transcript.split(/\s+/).filter(Boolean).length} words captured` : 'Your topic note'}</small></div></div>
+        <button className="secondary-button end-early-button" onClick={endEarly}>End session &amp; see results</button>
         <div className="capture-status"><span className="capture-dot"><MicrophoneIcon /></span><span>Listening while you speak</span>{permissionError && <small>{permissionError}</small>}</div>
         <button className="session-stop-button" type="button" onClick={stopTimerAndViewResults}>Stop timer and view results <span aria-hidden="true">→</span></button>
         <TopicNotesPanel

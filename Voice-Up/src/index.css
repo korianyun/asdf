@@ -4107,3 +4107,6 @@ dialog[open] {
     transform: translateY(0) scale(1);
   }
 }
+.end-early-button {
+  margin-top: 16px;
+}
